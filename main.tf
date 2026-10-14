@@ -35,15 +35,15 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # Canonical (Ubuntu)
 }
 
-# 3. Створення SSH Key Pair у AWS (версія v8)
+# 3. Створення SSH Key Pair у AWS (версія v9)
 resource "aws_key_pair" "deployer" {
-  key_name   = "dice-game-ec2-key-v8"
+  key_name   = "dice-game-ec2-key-v9"
   public_key = var.public_key_content
 }
 
-# 4. Security Group (версія v8)
+# 4. Security Group (версія v9)
 resource "aws_security_group" "dice_sg" {
-  name        = "dice-game-sg-v8"
+  name        = "dice-game-sg-v9"
   description = "Allow SSH (22) and HTTP (80) traffic"
 
   ingress {
@@ -70,11 +70,11 @@ resource "aws_security_group" "dice_sg" {
   }
 
   tags = {
-    Name = "dice-game-security-group-v8"
+    Name = "dice-game-security-group-v9"
   }
 }
 
-# 5. Створення EC2-інстансу (t3.micro, версія v8)
+# 5. Створення EC2-інстансу (t3.micro, версія v9)
 resource "aws_instance" "dice_server" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t3.micro"
@@ -82,16 +82,23 @@ resource "aws_instance" "dice_server" {
 
   vpc_security_group_ids = [aws_security_group.dice_sg.id]
 
-  # Встановлення Docker за допомогою офіційного скрипта गेट-докер
+  # Встановлення Swap 2GB (запобігає OOM / Exit 137) та офіційного Docker
   user_data = <<-EOF
               #!/bin/bash
               exec > /var/log/user-data.log 2>&1
               set -x
 
+              # Створення Swap-файлу 2GB для розширення RAM
+              fallocate -l 2G /swapfile
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile
+              echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
               apt-get update -y
               apt-get install -y curl git
 
-              # Офіційний автоматичний інсталятор Docker та Docker Compose
+              # Встановлення Docker через офіційний скрипт
               curl -fsSL https://get.docker.com -o get-docker.sh
               sh get-docker.sh
 
@@ -101,7 +108,7 @@ resource "aws_instance" "dice_server" {
               EOF
 
   tags = {
-    Name = "DiceGame-Production-Server-v8"
+    Name = "DiceGame-Production-Server-v9"
   }
 }
 

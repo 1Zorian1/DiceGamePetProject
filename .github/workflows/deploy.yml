@@ -53,7 +53,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            echo "Waiting for Docker installation..."
+            echo "Waiting for Docker installation on EC2..."
             until command -v docker &> /dev/null && sudo docker info &> /dev/null; do
               sleep 5
             done
