@@ -1,0 +1,62 @@
+name: CI/CD Pipeline - Infrastructure & App Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  terraform-and-deploy:
+    name: Provision AWS EC2 & Deploy Containerized App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Generate Public Key from Private Key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+          ssh-keygen -y -f private_key.pem > public_key.pub
+          echo "PUBLIC_KEY_CONTENT=$(cat public_key.pub)" >> $GITHUB_ENV
+
+      - name: Terraform Init
+        run: terraform init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve -var="public_key_content=${{ env.PUBLIC_KEY_CONTENT }}"
+          echo "SERVER_IP=$(terraform output -raw public_ip)" >> $GITHUB_ENV
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Wait for Cloud-Init / Docker Installation
+        run: sleep 30
+
+      - name: SSH Deploy Code & Run Docker Compose
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.SERVER_IP }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            mkdir -p /home/ubuntu/dice-game-devops
+            cd /home/ubuntu/dice-game-devops
+            if [ ! -d .git ]; then
+              git clone https://github.com/${{ github.repository }}.git .
+            else
+              git pull origin main
+            fi
+            docker compose down
+            docker compose up --build -d
+            docker image prune -f
