@@ -35,15 +35,15 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # Canonical (Ubuntu)
 }
 
-# 3. Створення SSH Key Pair у AWS (версія v5)
+# 3. Створення SSH Key Pair у AWS (версія v6)
 resource "aws_key_pair" "deployer" {
-  key_name   = "dice-game-ec2-key-v5"
+  key_name   = "dice-game-ec2-key-v6"
   public_key = var.public_key_content
 }
 
-# 4. Security Group (версія v5)
+# 4. Security Group (версія v6)
 resource "aws_security_group" "dice_sg" {
-  name        = "dice-game-sg-v5"
+  name        = "dice-game-sg-v6"
   description = "Allow SSH (22) and HTTP (80) traffic"
 
   ingress {
@@ -70,11 +70,11 @@ resource "aws_security_group" "dice_sg" {
   }
 
   tags = {
-    Name = "dice-game-security-group-v5"
+    Name = "dice-game-security-group-v6"
   }
 }
 
-# 5. Створення EC2-інстансу (t3.micro, версія v5)
+# 5. Створення EC2-інстансу (t3.micro, версія v6)
 resource "aws_instance" "dice_server" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t3.micro"
@@ -82,18 +82,30 @@ resource "aws_instance" "dice_server" {
 
   vpc_security_group_ids = [aws_security_group.dice_sg.id]
 
-  # Автоматичне встановлення Docker, Docker Compose та Git під час першого запуску
+  # Надійне встановлення Docker через офіційний APT-репозиторій
   user_data = <<-EOF
               #!/bin/bash
+              exec > /var/log/user-data.log 2>&1
+              set -x
+
               apt-get update -y
-              apt-get install -y docker.io docker-compose-plugin git
+              apt-get install -y ca-certificates curl gnupg lsb-release git
+
+              # Налаштування офіційного ключа та репозиторію Docker
+              mkdir -p /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+              apt-get update -y
+              apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
               systemctl start docker
               systemctl enable docker
               usermod -aG docker ubuntu
               EOF
 
   tags = {
-    Name = "DiceGame-Production-Server-v5"
+    Name = "DiceGame-Production-Server-v6"
   }
 }
 
