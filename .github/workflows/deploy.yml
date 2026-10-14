@@ -43,6 +43,10 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
+      # Пауза для завершення ініціалізації мережі та SSH на EC2
+      - name: Wait for EC2 SSH to be ready
+        run: sleep 30
+
       - name: Deploy Application via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -50,7 +54,6 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Чекаємо закінчення автоматичного встановлення Docker на EC2
             echo "Waiting for Docker installation on EC2..."
             until command -v docker &> /dev/null; do
               sleep 5
@@ -59,7 +62,7 @@ jobs:
             mkdir -p /home/ubuntu/dice-game-devops
             cd /home/ubuntu/dice-game-devops
 
-            # Клонування/оновлення приватного репозиторію через GITHUB_TOKEN
+            # Клонування/оновлення приватного репозиторію через системний GITHUB_TOKEN
             if [ ! -d .git ]; then
               git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git .
             else
