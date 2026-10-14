@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Dice Game — Zorian vs Veronika</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #1a1a2e; color: #fff; padding-top: 30px; }
+        .dice-container { display: flex; justify-content: center; gap: 50px; margin: 30px; }
+        .dice { width: 80px; height: 80px; background: #e94560; color: white; font-size: 40px; 
+                display: flex; align-items: center; justify-content: center; border-radius: 12px; font-weight: bold; }
+        .rolling { animation: spin 0.5s infinite linear; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        button { padding: 12px 30px; font-size: 18px; background-color: #0f3460; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        button:hover { background-color: #16213e; }
+        .result { font-size: 24px; margin-top: 20px; color: #4ecca3; }
+        table { margin: 30px auto; border-collapse: collapse; width: 60%; color: #fff; }
+        th, td { border: 1px solid #0f3460; padding: 8px; text-align: center; }
+        th { background-color: #16213e; }
+    </style>
+</head>
+<body>
+
+    <h1>🎲 Dice Game — Zorian vs Veronika 🎲</h1>
+
+    <div class="dice-container">
+        <div>
+            <h3>Zorian</h3>
+            <div id="dice1" class="dice">?</div>
+        </div>
+        <div>
+            <h3>Veronika</h3>
+            <div id="dice2" class="dice">?</div>
+        </div>
+    </div>
+
+    <button onclick="roll()">Кинути кості!</button>
+
+    <div id="result" class="result"></div>
+
+    <h2>Історія останніх ігор (БД PostgreSQL)</h2>
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Zorian</th><th>Veronika</th><th>Переможець</th></tr>
+        </thead>
+        <tbody id="history"></tbody>
+    </table>
+
+    <script>
+        async function roll() {
+            const d1 = document.getElementById('dice1');
+            const d2 = document.getElementById('dice2');
+            const res = document.getElementById('result');
+
+            d1.classList.add('rolling');
+            d2.classList.add('rolling');
+            res.innerText = "Кості крутяться...";
+
+            const response = await fetch('/api/roll', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ p1_name: 'Zorian', p2_name: 'Veronika' })
+            });
+            const data = await response.json();
+
+            setTimeout(() => {
+                d1.classList.remove('rolling');
+                d2.classList.remove('rolling');
+
+                d1.innerText = data.p1_score;
+                d2.innerText = data.p2_score;
+
+                if (data.winner === 'Draw') {
+                    res.innerText = "Нічия!";
+                } else {
+                    res.innerText = `🏆 Переміг: ${data.winner}!`;
+                }
+                loadHistory();
+            }, 600);
+        }
+
+        async function loadHistory() {
+            const res = await fetch('/api/history');
+            const data = await res.json();
+            const tbody = document.getElementById('history');
+            tbody.innerHTML = '';
+            data.forEach(row => {
+                tbody.innerHTML += `<tr><td>${row.id}</td><td>${row.s1}</td><td>${row.s2}</td><td>${row.winner}</td></tr>`;
+            });
+        }
+
+        loadHistory();
+    </script>
+</body>
+</html>

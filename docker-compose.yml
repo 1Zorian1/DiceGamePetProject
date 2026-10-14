@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: dice_db
+    environment:
+      POSTGRES_DB: dicedb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - dice-net
+
+  backend:
+    build: ./app
+    container_name: dice_backend
+    environment:
+      DB_HOST: db
+      DB_NAME: dicedb
+      DB_USER: postgres
+      DB_PASSWORD: postgrespassword
+    depends_on:
+      - db
+    networks:
+      - dice-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: dice_nginx
+    ports:
+      - "8080:80"   # <-- Вона має слухати саме 80 порт Ubuntu!
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - dice-net
+networks:
+  dice-net:
+
+volumes:
+  pgdata:
