@@ -9,7 +9,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "eu-central-1" # Зміни за потреби на свій регіон AWS
+  region = "eu-central-1" # Замініть на свій регіон AWS за потреби
 }
 
 # 1. Оголошення змінної для публічного SSH-ключа
@@ -35,15 +35,15 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # Офіційний Owner ID Canonical (Ubuntu)
 }
 
-# 3. Створення SSH Key Pair у AWS
+# 3. Створення SSH Key Pair у AWS (з оновленою назвою v2)
 resource "aws_key_pair" "deployer" {
-  key_name   = "dice-game-ec2-key"
+  key_name   = "dice-game-ec2-key-v2"
   public_key = var.public_key_content
 }
 
-# 4. Security Group (Правила брандмауера: SSH + HTTP)
+# 4. Security Group (з оновленою назвою v2)
 resource "aws_security_group" "dice_sg" {
-  name        = "dice-game-sg"
+  name        = "dice-game-sg-v2"
   description = "Allow SSH (22) and HTTP (80) traffic"
 
   ingress {
@@ -70,13 +70,13 @@ resource "aws_security_group" "dice_sg" {
   }
 
   tags = {
-    Name = "dice-game-security-group"
+    Name = "dice-game-security-group-v2"
   }
 }
 
 # 5. Створення EC2-інстансу
 resource "aws_instance" "dice_server" {
-  ami           = data.aws_ami.ubuntu.id # Динамічний AMI замість статичного ID
+  ami           = data.aws_ami.ubuntu.id # Використання актуального динамічного AMI
   instance_type = "t2.micro"
   key_name      = aws_key_pair.deployer.key_name
 
