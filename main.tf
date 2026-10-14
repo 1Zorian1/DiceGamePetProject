@@ -9,7 +9,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "eu-central-1" # За потреби змініть на ваш AWS регіон
+  region = "eu-central-1" # За потреби змініть на ваш регіон AWS
 }
 
 # 1. Оголошення змінної для публічного SSH-ключа
@@ -35,15 +35,15 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # Canonical (Ubuntu)
 }
 
-# 3. Створення SSH Key Pair у AWS (версія v7)
+# 3. Створення SSH Key Pair у AWS (версія v8)
 resource "aws_key_pair" "deployer" {
-  key_name   = "dice-game-ec2-key-v7"
+  key_name   = "dice-game-ec2-key-v8"
   public_key = var.public_key_content
 }
 
-# 4. Security Group (версія v7)
+# 4. Security Group (версія v8)
 resource "aws_security_group" "dice_sg" {
-  name        = "dice-game-sg-v7"
+  name        = "dice-game-sg-v8"
   description = "Allow SSH (22) and HTTP (80) traffic"
 
   ingress {
@@ -70,11 +70,11 @@ resource "aws_security_group" "dice_sg" {
   }
 
   tags = {
-    Name = "dice-game-security-group-v7"
+    Name = "dice-game-security-group-v8"
   }
 }
 
-# 5. Створення EC2-інстансу (t3.micro, версія v7)
+# 5. Створення EC2-інстансу (t3.micro, версія v8)
 resource "aws_instance" "dice_server" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t3.micro"
@@ -82,21 +82,26 @@ resource "aws_instance" "dice_server" {
 
   vpc_security_group_ids = [aws_security_group.dice_sg.id]
 
-  # Встановлення Docker, Docker Compose Plugin та Git
+  # Встановлення Docker за допомогою офіційного скрипта गेट-докер
   user_data = <<-EOF
               #!/bin/bash
               exec > /var/log/user-data.log 2>&1
               set -x
 
               apt-get update -y
-              apt-get install -y docker.io docker-compose-plugin git
+              apt-get install -y curl git
+
+              # Офіційний автоматичний інсталятор Docker та Docker Compose
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sh get-docker.sh
+
               systemctl start docker
               systemctl enable docker
               usermod -aG docker ubuntu
               EOF
 
   tags = {
-    Name = "DiceGame-Production-Server-v7"
+    Name = "DiceGame-Production-Server-v8"
   }
 }
 

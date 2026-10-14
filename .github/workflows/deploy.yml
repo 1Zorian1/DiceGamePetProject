@@ -43,7 +43,6 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # Пауза для завершення ініціалізації мережі та SSH на EC2
       - name: Wait for EC2 SSH to be ready
         run: sleep 30
 
@@ -54,22 +53,20 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            echo "Waiting for Docker installation on EC2..."
-            until command -v docker &> /dev/null; do
+            echo "Waiting for Docker installation..."
+            until command -v docker &> /dev/null && sudo docker info &> /dev/null; do
               sleep 5
             done
 
             mkdir -p /home/ubuntu/dice-game-devops
             cd /home/ubuntu/dice-game-devops
 
-            # Клонування/оновлення приватного репозиторію через системний GITHUB_TOKEN
             if [ ! -d .git ]; then
               git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git .
             else
               git pull origin main
             fi
 
-            # Запуск контейнерів
             sudo docker compose down || true
             sudo docker compose up --build -d
             sudo docker image prune -f
